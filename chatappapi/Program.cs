@@ -1,8 +1,10 @@
 ﻿using System.Text;
 using chatappapi.Controllers;
+using chatappapi.Data;
 using chatappapi.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 namespace chatappapi
@@ -72,6 +74,8 @@ namespace chatappapi
 
             builder.Services.AddSignalR();
             builder.Services.AddControllers();
+
+            builder.Services.AddDbContext<ChatAppContext>(options => options.UseSqlServer(builder.Configuration["DB:ConnectionString"]));
 
             var app = builder.Build();
 

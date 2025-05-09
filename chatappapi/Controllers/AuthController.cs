@@ -3,9 +3,14 @@ using System.Runtime.Serialization;
 using System.Security.Claims;
 using System.Text;
 using chatappapi.Models;
+using Humanizer;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.CodeAnalysis.Scripting;
 using Microsoft.IdentityModel.Tokens;
+using BCrypt.Net;
+using chatappapi.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace chatappapi.Controllers
 {
@@ -14,39 +19,38 @@ namespace chatappapi.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IConfiguration _configuration;
+        private readonly ChatAppContext _context;
 
-        public AuthController(IConfiguration configuration)
+        public AuthController(IConfiguration configuration, ChatAppContext context)
         {
             _configuration = configuration;
+            _context = context;
         }
 
-        // Simulated in-memory user list
-        private static List<User> Users = new List<User>();
-
         [HttpPost("register")]
-        public IActionResult Register(UserDTO userDTO)
+        public async Task<IActionResult> Register(UserDTO userDTO)
         {
-            if (Users.Any(u => u.Username == userDTO.Username))
+            if (_context.Users.Any(u => u.Username == userDTO.Username))
             {
                 return BadRequest("Username already exists");
             }
 
             var user = new User
             {
-                Id = Users.Count + 1,
                 Username = userDTO.Username,
-                Password = userDTO.Password
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(userDTO.Password)
             };
 
-            Users.Add(user);
-            return Ok();
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+            return Created();
         }
 
         [HttpPost("login")]
-        public IActionResult Login(UserDTO userDTO)
+        public async Task<IActionResult> Login(UserDTO userDTO)
         {
-            var user = Users.FirstOrDefault(u => u.Username == userDTO.Username && u.Password == userDTO.Password);
-            if (user == null)
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == userDTO.Username);
+            if (user == null || !VerifyPassword(userDTO.Password, user.PasswordHash))
             {
                 return BadRequest("Invalid credentials");
             }
@@ -73,6 +77,11 @@ namespace chatappapi.Controllers
             {
                 token = new JwtSecurityTokenHandler().WriteToken(token)
             });
+        }
+
+        private bool VerifyPassword(string plainPassword, string hashedPassword)
+        {
+            return BCrypt.Net.BCrypt.Verify(plainPassword, hashedPassword);
         }
     }
 }
