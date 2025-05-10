@@ -11,6 +11,8 @@ using Microsoft.IdentityModel.Tokens;
 using BCrypt.Net;
 using chatappapi.Data;
 using Microsoft.EntityFrameworkCore;
+using chatappapi.Repositories;
+using System.Runtime.InteropServices;
 
 namespace chatappapi.Controllers
 {
@@ -19,18 +21,19 @@ namespace chatappapi.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IConfiguration _configuration;
-        private readonly ChatAppContext _context;
+        private readonly IUserRepository _userRepository;
 
-        public AuthController(IConfiguration configuration, ChatAppContext context)
+        public AuthController(IConfiguration configuration, IUserRepository repo)
         {
             _configuration = configuration;
-            _context = context;
+            _userRepository = repo;
         }
 
         [HttpPost("register")]
         public async Task<IActionResult> Register(UserDTO userDTO)
         {
-            if (_context.Users.Any(u => u.Username == userDTO.Username))
+            var existingUser = await _userRepository.GetUserByUsernameAsync(userDTO.Username);
+            if (existingUser != null)
             {
                 return BadRequest("Username already exists");
             }
@@ -41,15 +44,14 @@ namespace chatappapi.Controllers
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(userDTO.Password)
             };
 
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
+            var newUserId = _userRepository.CreateUserAsync(user);
             return Created();
         }
 
         [HttpPost("login")]
         public async Task<IActionResult> Login(UserDTO userDTO)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == userDTO.Username);
+            var user = await _userRepository.GetUserByUsernameAsync(userDTO.Username);
             if (user == null || !VerifyPassword(userDTO.Password, user.PasswordHash))
             {
                 return BadRequest("Invalid credentials");

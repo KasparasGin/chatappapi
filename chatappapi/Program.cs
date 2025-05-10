@@ -2,6 +2,7 @@
 using chatappapi.Controllers;
 using chatappapi.Data;
 using chatappapi.Models;
+using chatappapi.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -76,6 +77,8 @@ namespace chatappapi
             builder.Services.AddControllers();
 
             builder.Services.AddDbContext<ChatAppContext>(options => options.UseSqlServer(builder.Configuration["DB:ConnectionString"]));
+
+            builder.Services.AddScoped<IUserRepository, UserRepository>();
 
             var app = builder.Build();
 
