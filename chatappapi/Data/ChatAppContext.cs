@@ -8,5 +8,7 @@ namespace chatappapi.Data
         public ChatAppContext(DbContextOptions<ChatAppContext> options): base(options) {    }
 
         public DbSet<User> Users { get; set; }
+
+        public DbSet<Message> Messages { get; set; }
     }
 }
